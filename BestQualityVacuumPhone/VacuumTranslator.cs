@@ -14,6 +14,15 @@ public struct VacuumResult
     }
 }
 
+public delegate void VacuumProgressCallback(
+    int step,
+    string from,
+    string to,
+    string text);
+
+public delegate void VacuumErrorCallback(
+    int attemptsLeft);
+
 public static class VacuumTranslator
 {
     private static readonly HttpClient _http = new();
@@ -30,10 +39,12 @@ public static class VacuumTranslator
         string text,
         string from,
         string to,
-        int numTranslations = 1,
-        int numAttempts = 100)
+        int steps = 1,
+        int numAttempts = 100,
+        VacuumProgressCallback onProgress = null,
+        VacuumErrorCallback onError = null)
     {
-        if (numTranslations < 1)
+        if (steps < 1)
             throw new ArgumentException("Number of translations must be 1 and more.");
 
         string url = string.Concat(_url.Reverse());
@@ -44,10 +55,10 @@ public static class VacuumTranslator
         int attemptsLeft = numAttempts;
         string translatedText = text;
         string fromLanguage = from;
-        for (int i = 0; i < numTranslations; i++)
+        for (int i = 0; i < steps; i++)
         {
             string toLanguage;
-            if (i + 1 == numTranslations)
+            if (i + 1 == steps)
                 toLanguage = to;
             else
                 toLanguage = GetRandomLangCode();
@@ -60,7 +71,7 @@ public static class VacuumTranslator
             HttpResponseMessage responce = await _http.GetAsync(requestUrl);
             if (!responce.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Failed to connect server... Attempts left: {attemptsLeft}");
+                onError?.Invoke(attemptsLeft);
 
                 attemptsLeft--;
                 i--;
@@ -79,8 +90,8 @@ public static class VacuumTranslator
 
             string fromLang = GetLanguageFromCode(fromLanguage);
             string toLang = GetLanguageFromCode(toLanguage);
-            Console.WriteLine(
-                $"{i + 1}/{numTranslations} {fromLang}-{toLang}");
+   
+            onProgress?.Invoke(i + 1, fromLang, toLang, translatedText);
 
             fromLanguage = toLanguage;
         }
@@ -93,7 +104,8 @@ public static class VacuumTranslator
         return _languageCodes[_rand.Next(0, _languageCodes.Length)];
     }
 
-    private static string GetLanguageFromCode(string code)
+    private static string GetLanguageFromCode(
+        string code)
     {
         int index = LanguageCode.Values
             .ToList()
