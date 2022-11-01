@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace BestQualityVacuumPhone;
 
@@ -84,13 +85,17 @@ public static class VacuumTranslator
             attemptsLeft = numAttempts;
 
             string jsonContent = await responce.Content.ReadAsStringAsync();
-            var json = JsonSerializer.Deserialize<dynamic>(jsonContent);
+            var json = JsonConvert.DeserializeObject<object[]>(jsonContent);
 
-            translatedText = ((object)json[0][0][0]).ToString();
+            translatedText = string.Empty;
+            foreach (var entry in (JArray)json[0])
+            {
+                translatedText += entry[0];
+            }
 
             string fromLang = GetLanguageFromCode(fromLanguage);
             string toLang = GetLanguageFromCode(toLanguage);
-   
+
             onProgress?.Invoke(i + 1, fromLang, toLang, translatedText);
 
             fromLanguage = toLanguage;

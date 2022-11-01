@@ -1,22 +1,24 @@
 ﻿using BestQualityVacuumPhone;
 using System.Text;
+using System.Web;
 
 Console.OutputEncoding = Encoding.Unicode;
 
 // Configuration
 
-int steps = 5;
-int batch = 20;
+int steps = 50;
+int batch = 35;
 
 string oxtPath = @"C:\\Users\\falco\\Desktop\\global.oxt.txt";
 string outPath = @"C:\\Users\\falco\\Desktop\\lost.oxt.txt";
 
 // End
 
-IEnumerable<string> oxtLines = File
+List<string> oxtLines = File
     .ReadAllLines(oxtPath)
     .Skip(2)
-    .TakeWhile(x => x != "}");
+    .TakeWhile(x => x != "}")
+    .ToList();
 
 static void WriteOn(int x, int y, string text)
 {
@@ -29,26 +31,29 @@ static void WriteOn(int x, int y, string text)
 Dictionary<string, string> translation = new();
 
 List<string> keys = new();
-StringBuilder batchSb = new();
+List<string> values = new();
 
 int index = 0;
+int batchIndex = 0;
 foreach (string oxtLine in oxtLines)
 {
+    index++;
     string[] parts = oxtLine.Split('=', StringSplitOptions.TrimEntries);
 
     string key = parts[0];
     string value = parts[1];
 
     // Packing batch
-    if (keys.Count < batch)
+    keys.Add(key);
+    values.Add(value);
+    if (index != oxtLines.Count && keys.Count < batch)
     {
-        batchSb.AppendLine(value);
-        keys.Add(key);
         continue;
     }
 
     // Sending batch
-    string batchText = batchSb.ToString();
+    string batchText = string.Join("\r\n", values);
+    batchText = HttpUtility.UrlEncode(batchText);
     VacuumResult result = await VacuumTranslator.Translate(
         batchText,
         "English",
@@ -56,25 +61,25 @@ foreach (string oxtLine in oxtLines)
         steps: steps,
         onProgress: (step, from, to, text) =>
         {
-            WriteOn(index, 0, $"[{index}] - {((double)step / steps):0%} {step}/{steps} {from}-{to}");
+            WriteOn(batchIndex, 0, $"[{batchIndex}] - {(double)step / steps:0%} {step}/{steps} {from}-{to}");
         },
         onError: (attemptsLeft) =>
         {
-            WriteOn(index, 0, $"[{index}] - Connection failed. Attempts left: {attemptsLeft}");
+            WriteOn(batchIndex, 0, $"[{batchIndex}] - Connection failed. Attempts left: {attemptsLeft}");
         });
 
     // Unpacking batch
     string[] results = result.Text.Split("\r\n");
     for (int i = 0; i < results.Length; i++)
     {
-        WriteOn(index, 0, $"[{index}] - {results[i]}");
+        WriteOn(batchIndex, 0, $"[{batchIndex}] - {results[i]}");
         translation[keys[i]] = results[i];
-        index++;
+        batchIndex++;
     }
 
     // Cleaning up batch
     keys.Clear();
-    batchSb.Clear();
+    values.Clear();
 }
 Console.WriteLine($"\n\nWriting {outPath}");
 
