@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace BestQualityVacuumPhone;
 
@@ -24,6 +25,8 @@ public delegate void VacuumProgressCallback(
 public delegate void VacuumErrorCallback(
     int attemptsLeft);
 
+public delegate void VacuumFailedCallback();
+
 public static class VacuumTranslator
 {
     private static readonly HttpClient _http = new();
@@ -41,9 +44,10 @@ public static class VacuumTranslator
         string from,
         string to,
         int steps = 1,
-        int numAttempts = 100,
+        int numAttempts = 50,
         VacuumProgressCallback onProgress = null,
-        VacuumErrorCallback onError = null)
+        VacuumErrorCallback onError = null,
+        VacuumFailedCallback onFailed = null)
     {
         if (steps < 1)
             throw new ArgumentException("Number of translations must be 1 and more.");
@@ -78,7 +82,10 @@ public static class VacuumTranslator
                 i--;
 
                 if (attemptsLeft == 0)
+                {
+                    onFailed?.Invoke();
                     return new VacuumResult(false, translatedText);
+                }
 
                 continue;
             }
