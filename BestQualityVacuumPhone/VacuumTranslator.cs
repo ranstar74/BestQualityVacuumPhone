@@ -60,6 +60,8 @@ public static class VacuumTranslator
             HttpResponseMessage responce = await _http.GetAsync(requestUrl);
             if (!responce.IsSuccessStatusCode)
             {
+                Console.WriteLine($"Failed to connect server... Attempts left: {attemptsLeft}");
+
                 attemptsLeft--;
                 i--;
 
