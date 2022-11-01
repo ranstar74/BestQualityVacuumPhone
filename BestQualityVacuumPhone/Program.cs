@@ -6,7 +6,7 @@ Console.OutputEncoding = Encoding.Unicode;
 
 // Configuration
 
-int steps = 50; // Number of translation times
+int steps = 65; // Number of translation times
 int batch = 35; // Number of lines per request (more - faster, but can be blocked by google)
 
 string oxtPath = @"C:\\Users\\falco\\Desktop\\global.oxt.txt";
@@ -57,7 +57,7 @@ foreach (string oxtLine in oxtLines)
     VacuumResult result = await VacuumTranslator.Translate(
         batchText,
         "English",
-        "French",
+        "English",
         steps: steps,
         onProgress: (step, from, to, text) =>
         {
